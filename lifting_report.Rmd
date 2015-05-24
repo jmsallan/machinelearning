@@ -61,9 +61,9 @@ My reference to select the algorithm to obtain the prediction is again the paper
 As for the cross-validation, I have found that some of the default settings would cause a too long model execution, with little or no gain of accuracy. So, I have decided to reduce the `number` of boots to five. The obtained model is:
 
 ```{r}
-# set.seed(333)
+set.seed(333)
 
-# mod05 <- train(formula, data=training, method="rf", trControl=trainControl(number=5), prox=TRUE)
+mod05 <- train(formula, data=training, method="rf", trControl=trainControl(number=5), prox=TRUE)
 ```
 
 #Model results
@@ -71,9 +71,9 @@ As for the cross-validation, I have found that some of the default settings woul
 Once the model is obtained, it can be applied to the testing subsample for accuracy validation:
 
 ```{r}
-#mod05.pred <- predict(mod05, testing)
+mod05.pred <- predict(mod05, testing)
 
-#confusionMatrix(mod05.pred, testing$classe)
+confusionMatrix(mod05.pred, testing$classe)
 ```
 
 The resulting model shows high values of accuracy and Kappa, and in the confusion matrix can be seen that most of the observations are correctly predicted. Then I used the same model to predict the 20 observations defined in the model specification. All 20 observations have been predicted correctly:
@@ -81,9 +81,9 @@ The resulting model shows high values of accuracy and Kappa, and in the confusio
 ```{r}
 test0 <- read.csv("pml-testing.csv")
 
-#mod05.test <- predict(mod05, test0)
+mod05.test <- predict(mod05, test0)
 
-#mod05.test
+mod05.test
 ```
 
 #Model interpretation
@@ -91,19 +91,19 @@ test0 <- read.csv("pml-testing.csv")
 One of the pitfalls of random forests is that the model is hard to interpret. In order to throw some light on that issue, I have checked the importance of each variable:
 
 ```{r}
-#varImp(mod05)
+varImp(mod05)
 ```
 
 As `roll_belt` and `yaw_belt` are the most important variables, I have decided to plot the values of both variables in the training set by `classe`:
 
 ```{r graph01}
-#qplot(roll_belt, yaw_belt, color=classe, data=training)
+qplot(roll_belt, yaw_belt, color=classe, data=training)
 ```
 
 and finally plot the predicted and unpredicted values of the testing set:
 
 ```{r graph02}
-#predRight05 <- mod05.pred == testing$classe
+predRight05 <- mod05.pred == testing$classe
 
-#qplot(roll_belt, yaw_belt, color=predRight05, data=testing)
+qplot(roll_belt, yaw_belt, color=predRight05, data=testing)
 ```
