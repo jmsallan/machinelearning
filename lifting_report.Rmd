@@ -1,0 +1,109 @@
+---
+title: "Predicting barbell lifts performance"
+output: html_document
+---
+
+#Project aim
+
+The data to be used in this project contains information about a study on qualitative activity recognition of weight lifting exercices. The participants are requested to perform barbell lifts exercices correctly and incorrectly in five different ways. These ways are coded with letters `A` to `E` in the `classe` variable in the dataset. While performing the exercices, they are wearing accelerometers on the belt, forearm, arm and dumbbell. The dataset includes information from these participants while performing the exercises. The goal of the project is to predict the manner in which they did the exercise, using the data from accelerometers.
+
+#Predictor selection
+
+A guideline to start this project is an article written by the developers of the dataset entitled *Qualitative Activity Recognition of Weight Lifting Exercices* by Velloso et al. (2013), availabe in <http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201>. Examining the contents of the dataset after reading the paper, we notice that:
+
+* Data from accelerometers are taken in different time windows. In fact, the `pml-training.csv` file contains information from 19622 observations, split in 858 time windows.
+* The authors of the paper use in their model aggregated information for each time window, which is stored in the observations where `new_window=='yes'`.
+* The observations in the `pml-testing.csv` file do not contain any aggregated information. The only way to link these observations with the aggregated variables is the `num-window` variable.
+
+Then, in order to use the `predict` function to obtain the predicted values in the test dataset, I have chosen to use the original values taken from accelerometers, which are the x, y and z component of gyros, accel and magnet, and the roll, pitch, yaw and total acceleration calculated from these variables, that is, 13 variables for each accelerometer. Considering that participants wear four sensors, this amounts to 52 variables for each observation (I would like to thank Edward Drake for clarifying this issue in a post in the Discussion Forum). I have also chosen to pick a the subset of variables which are no the start of a time window. So, we can load the data by doing:
+
+```{r}
+train <- read.csv("pml-training.csv")
+
+train0 <- train[which(train$new_window=="no"), ]
+```
+
+To assess model performance, I have split the `train0` data into `training` and `testing` subsets:
+
+```{r, message=FALSE, warning=FALSE}
+library(caret)
+
+set.seed(333)
+
+trainIndex <- createDataPartition(train0$classe, p=0.7, list=FALSE)
+
+training <- train0[trainIndex, ]
+testing <- train0[-trainIndex, ]
+```
+
+Next, I have to build a formula to pass into the `train` function of  `caret`, containing `classe` as dependent variable, and the 54 predictors mentioned above. I have decided to apply regular expressions to variable names to be sure that I catch all independent variables, and then build the formula:
+
+```{r}
+vars0 <- colnames(train0)
+
+predictors <- vars0[c(grep("gyros", vars0), grep("^accel", vars0), grep("magnet", vars0), grep("^roll", vars0), grep("^pitch", vars0), grep("^yaw", vars0), grep("^total", vars0))]
+
+formula <- paste("classe ~", predictors[1])
+
+for(i in 2:length(predictors)){
+  formula <- paste(formula, "+", predictors[i])
+}
+
+formula <- as.formula(formula)
+
+print(formula)
+```
+
+#Prediction model
+
+My reference to select the algorithm to obtain the prediction is again the paper by Velloso et al., where they state that have used random forest for prediction. I have tried some other algorithms, like trees with `rpart` (not shown here), but I have obtained much lower values of accuracy, so I decided to stick to random forests.
+
+As for the cross-validation, I have found that some of the default settings would cause a too long model execution, with little or no gain of accuracy. So, I have decided to reduce the `number` of boots to five. The obtained model is:
+
+```{r}
+# set.seed(333)
+
+# mod05 <- train(formula, data=training, method="rf", trControl=trainControl(number=5), prox=TRUE)
+```
+
+#Model results
+
+Once the model is obtained, it can be applied to the testing subsample for accuracy validation:
+
+```{r}
+#mod05.pred <- predict(mod05, testing)
+
+#confusionMatrix(mod05.pred, testing$classe)
+```
+
+The resulting model shows high values of accuracy and Kappa, and in the confusion matrix can be seen that most of the observations are correctly predicted. Then I used the same model to predict the 20 observations defined in the model specification. All 20 observations have been predicted correctly:
+
+```{r}
+test0 <- read.csv("pml-testing.csv")
+
+#mod05.test <- predict(mod05, test0)
+
+#mod05.test
+```
+
+#Model interpretation
+
+One of the pitfalls of random forests is that the model is hard to interpret. In order to throw some light on that issue, I have checked the importance of each variable:
+
+```{r}
+#varImp(mod05)
+```
+
+As `roll_belt` and `yaw_belt` are the most important variables, I have decided to plot the values of both variables in the training set by `classe`:
+
+```{r graph01}
+#qplot(roll_belt, yaw_belt, color=classe, data=training)
+```
+
+and finally plot the predicted and unpredicted values of the testing set:
+
+```{r graph02}
+#predRight05 <- mod05.pred == testing$classe
+
+#qplot(roll_belt, yaw_belt, color=predRight05, data=testing)
+```
